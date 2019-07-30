@@ -1,0 +1,261 @@
+﻿<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" href="./favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" type="text/css" href="./index.css">
+  <title>BasicWebServer - WebSocket/Http Test</title>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      //web socket handlers
+      const output_box = document.getElementById("output_box");
+      document.getElementById("create_ws").addEventListener("click",() => {
+        const websocket = new WebSocket('ws://localhost:54001/employee');
+        //const websocket = new WebSocket('ws://echo.websocket.org'); //debug
+        //Open websocket
+        websocket.addEventListener('open', () => {
+          output_box.textContent = 'Web Socket Open';
+        });
+
+        websocket.addEventListener('message', e => {
+          if (typeof e.data === 'string'){        //for json
+            const json = JSON.parse(e.data);
+            if (json.action === "add"){
+              console.log(json.message);
+              output_box.textContent = json.message;
+            }else if (json.action === "get") {
+              console.log(json.message);
+              output_box.textContent = JSON.stringify(json.message);
+            }
+          }else if (e.data instanceof ArrayBuffer){     //for images, etc
+            //const buffer = e.data;  //debug
+            console.log('Received ArrayBuffer');
+          }
+        });
+        
+        websocket.addEventListener('error',e => {
+          output_box.textContent = 'Web Socket Error ' + e;
+        });
+        
+        websocket.addEventListener('close', e => {
+          output_box.textContent = 'Web Socket Closed' + e;
+        });
+        //Add employee
+        document.getElementById("add_employee_ws").addEventListener("click",() => {
+          const employee = {
+            action: 'add',
+            name: 'Jim Beam',
+            age: 46,
+            address: '1267 Spencer Ave, Toledo,Ohio',
+            active: true,
+            hired: '2018-1-23',
+            family: ['Betty','James','Tommy'],
+            picture: 'bobjones.jpeg'
+          };
+          websocket.send(JSON.stringify(employee));
+        });
+        //Get employee
+        document.getElementById("get_employee_ws").addEventListener("click",() => {
+          const get_request = {action: 'get', name:'Sam Peters'};
+          websocket.send(JSON.stringify(get_request));
+        });
+        //Close websocket
+        document.getElementById("close_ws").addEventListener("click", () => {
+          if (websocket.readyState === websocket.OPEN){
+            websocket.close();
+          }
+        });
+        output_box.textContent = 'Web Socket Created';
+      });
+      
+      //http handlers
+      //POST add employee
+      document.getElementById("post_employee_http").addEventListener("click",() => {
+        const url = 'http://localhost:8080/employee';
+        const request_data = {
+          action: 'add',
+          name: 'Peter Trump',
+          age: 68,
+          address: '456 Wall Street, New York,New York',
+          active: true,
+          hired: '2017-1-23',
+          family: ['Jude','Roger','Mary'],
+          picture: 'petertrump.jpeg'
+        };
+        const request_data_str = JSON.stringify(request_data);
+        const config = {
+          method: 'POST',
+          mode: 'cors',
+          body: request_data_str,
+          headers: new Headers({
+            'Content-Type': 'application/json',
+            'Content-Length': request_data_str.length
+          })
+        };
+        fetch(url,config).then(response => {
+          if(response.ok){
+            return response.text();
+          }
+          throw new Error(response.statusText);
+        }).then((resp_str) => {
+          output_box.textContent = resp_str;
+        }).catch(error => {
+          output_box.textContent = error;
+        })
+      });
+      //POST get employee
+      document.getElementById("get_employee_http").addEventListener("click",() => {
+        const url = 'http://localhost:8080/employee';
+        const request_data = {action: 'get',name: 'Peter Trump'};
+        const request_data_str = JSON.stringify(request_data);
+        const config = {
+          method: 'POST',
+          mode: 'cors',
+          body: request_data_str,
+          headers: new Headers({
+            'Content-Type': 'application/json',
+            'Content-Length': request_data_str.length
+          })
+        };
+        fetch(url,config).then(response => {
+          if(response.ok){
+            return response.json();
+          }
+          throw new Error(response.statusText);
+        }).then(resp_json => {
+          output_box.textContent = JSON.stringify(resp_json);
+        }).catch(error => {
+          output_box.textContent = error;
+        })
+      });
+      //PUT update employee
+      document.getElementById("update_employee_http").addEventListener("click",() => {
+        const url = 'http://localhost:8080/employee';
+        const request_data = {action: 'update',name: 'Peter Trump',age: 104};
+        const request_data_str = JSON.stringify(request_data);
+        const config = {
+          method: 'PUT',
+          mode: 'cors',
+          body: request_data_str,
+          headers: new Headers({
+            'Content-Type': 'application/json',
+            'Content-Length': request_data_str.length
+          })
+        };
+        fetch(url,config).then(response => {
+          if(response.ok){
+            return response.text();
+          }
+          throw new Error(response.statusText);
+        }).then((resp_str) => {
+          output_box.textContent = resp_str;
+        }).catch(error => {
+          output_box.textContent = error;
+        })
+      });
+      //DELETE delete employee
+      document.getElementById("delete_employee_http").addEventListener("click",() => {
+        const url = 'http://localhost:8080/employee';
+        const request_data = {action: 'delete',name: 'Peter Trump'};
+        const request_data_str = JSON.stringify(request_data);
+        const config = {
+          method: 'DELETE',
+          mode: 'cors',
+          body: request_data_str,
+          headers: new Headers({
+            'Content-Type': 'application/json',
+            'Content-Length': request_data_str.length
+          })
+        };
+        fetch(url,config).then(response => {
+          if(response.ok){
+            return response.text();
+          }
+          throw new Error(response.statusText);
+        }).then(resp_str => {
+          output_box.textContent = resp_str;
+        }).catch(error => {
+          output_box.textContent = error;
+        })
+      });
+      //POST get names of all employees
+      document.getElementById("get_employees_http").addEventListener("click",() => {
+        const url = 'http://localhost:8080/employee';
+        const request_data = {action: 'all'};
+        const request_data_str = JSON.stringify(request_data);
+        const config = {
+          method: 'POST',
+          mode: 'cors',
+          body: request_data_str,
+          headers: new Headers({
+            'Content-Type': 'application/json',
+            'Content-Length': request_data_str.length
+          })
+        };
+        fetch(url,config).then(response => {
+          if(response.ok){
+            return response.text();
+          }
+          throw new Error(response.statusText);
+        }).then(resp_str => {
+          output_box.textContent = resp_str;
+        }).catch(error => {
+          output_box.textContent = error;
+        })
+      });
+      //GET 500 error
+      document.getElementById("get_error_http").addEventListener("click",() => {
+        const url = 'http://localhost:8080/employee';
+        const request_data = {action: 'error500'};
+        const request_data_str = JSON.stringify(request_data);
+        const config = {
+          method: 'POST',
+          mode: 'cors',
+          body: request_data_str,
+          headers: new Headers({
+            'Content-Type': 'application/json',
+            'Content-Length': request_data_str.length
+          })
+        };
+        fetch(url,config).then(response => {
+          if(response.ok) {
+            return response.text();
+          }
+          throw new Error(response.statusText);
+        }).then(resp_str => {
+          output_box.textContent = resp_str;
+        }).catch(error => {
+          output_box.textContent = error;
+        })
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <div class="serverClient">
+    <section class="serverClient_subSec">
+      <h2>Web Socket Test</h2>
+      <section class="serverClient_buttonsSec">
+        <button id="create_ws">Create WebSocket</button>
+        <button id="add_employee_ws">Add Employee Jim Beam</button>
+        <button id="get_employee_ws">Get Employee Sam Peters</button>
+        <button id="close_ws">Close WebSocket</button>
+        
+      </section>
+    </section>
+    <section class="serverClient_subSec">
+      <h2>HTTP Test</h2>
+      <section class="serverClient_buttonsSec">
+        <button class="serverClient_button" id="post_employee_http">Post Employee Peter Trump</button>
+        <button class="serverClient_button" id="get_employee_http">Get Employee Peter Trump</button>
+        <button class="serverClient_button" id="update_employee_http">Update Employee Peter Trump</button>
+        <button class="serverClient_button" id="delete_employee_http">Delete Employee Peter Trump</button>
+        <button class="serverClient_button" id="get_employees_http">Get All Employees</button>
+        <button class="serverClient_button" id="get_error_http">Get 500 Error</button>
+      </section>
+    </section>
+    <textarea class="serverClient_outBox" id="output_box">Server Messages</textarea>
+  </div>
+</body>
+</html>

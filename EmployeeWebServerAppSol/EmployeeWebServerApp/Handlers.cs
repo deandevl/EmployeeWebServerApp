@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using BasicWebServerLib;
 using BasicWebServerLib.WsCommon;
@@ -11,6 +12,7 @@ using BasicWebServerLib.Events;
 using BasicWebServerLib.HttpCommon;
 using EmployeeWebServerApp.models;
 using LiteDB;
+using System.Web.Script.Serialization;
 
 namespace EmployeeWebServerApp {
   public class Handlers {
@@ -18,11 +20,13 @@ namespace EmployeeWebServerApp {
     private readonly Helpers _helpers;
     private readonly Dictionary<string, Action> _actions;
     private readonly LiteCollection<Employee> _employeeCol;
+    private readonly JavaScriptSerializer _serializer;
     private Dictionary<string, object> _requestDictionary;
     private HttpConnectionDetails _httpDetails;
     
     public Handlers(string serverBaseFolder, string databasePath, string collectionName) {
       _serverBaseFolder = serverBaseFolder;
+      _serializer = new JavaScriptSerializer();
       _helpers = new Helpers();
       LiteDatabase db = new LiteDatabase(databasePath);
       _employeeCol = db.GetCollection<Employee>(collectionName);
@@ -95,7 +99,7 @@ namespace EmployeeWebServerApp {
       NetworkStream stream = details.Stream;
       WsFrameWriter wsFrameWriter = new WsFrameWriter(stream);
 
-      _requestDictionary = _helpers.JsonToDictionary(message);
+      _requestDictionary = _serializer.Deserialize<Dictionary<string, object>>(message);
       string name = (string) _requestDictionary["name"];
       if(details.PathOrFileName == "employee") {
         if((string) _requestDictionary["action"] == "add") {
@@ -120,8 +124,8 @@ namespace EmployeeWebServerApp {
       HttpRequestEventArgs httpArgs = (HttpRequestEventArgs) args;
       _httpDetails = httpArgs.Details;
       string body = (string)httpArgs.Body;
-      _requestDictionary = _helpers.JsonToDictionary(body);
       
+      _requestDictionary = _serializer.Deserialize<Dictionary<string, object>>(body);
       if(_httpDetails.HttpPath == "employee") {
         _actions[(string)_requestDictionary["action"]]();
       }
@@ -142,7 +146,14 @@ namespace EmployeeWebServerApp {
     }
     private int AddEmployee() {
       Employee employee = new Employee();
-      employee.DictionaryToEmployee(_requestDictionary);
+      employee.Name = (string) _requestDictionary["name"];
+      employee.Age = (int) _requestDictionary["age"];
+      employee.Address = (string) _requestDictionary["address"];
+      employee.Active = (bool) _requestDictionary["active"];
+      string[] dateParts = ((string)_requestDictionary["hired"]).Split('-');
+      employee.Hired = new DateTime(Int32.Parse(dateParts[0]),Int32.Parse(dateParts[1]),Int32.Parse(dateParts[2]));
+      employee.Family = (ArrayList)_requestDictionary["family"];
+      employee.Picture = (string) _requestDictionary["picture"];
       employee.Id = _employeeCol.Insert(employee);
       return employee.Id;
     }
@@ -155,9 +166,11 @@ namespace EmployeeWebServerApp {
     }
 
     private bool UpdateEmployee() {
+      //change age to 125
       string name = (string)_requestDictionary["name"];
       Employee employee = _employeeCol.FindOne(x => x.Name.Equals(name));
-      employee.DictionaryToEmployee(_requestDictionary);
+      employee.Age = (int)_requestDictionary["age"];
+
       bool updated = _employeeCol.Update(employee);
       return updated;
     }
@@ -174,7 +187,7 @@ namespace EmployeeWebServerApp {
       foreach(Employee employee in employees) {
         names.Add(employee.Name);
       }
-      return _helpers.ArrayToJson(names);
+      return _serializer.Serialize(names);
     }
   }
 }
